@@ -1,6 +1,6 @@
-/* A Corujeira dashboard cards v1.6.1. Built from cards/ by scripts/build.mjs; edit the files in cards/, not this one.
+/* A Corujeira dashboard cards v1.6.2. Built from cards/ by scripts/build.mjs; edit the files in cards/, not this one.
    Contains: corujeira-fire-card, corujeira-flow-card, corujeira-forecast-card, corujeira-hoot-card, corujeira-meteogram-card, corujeira-silo-card, corujeira-span-card. */
-console.info("%c A CORUJEIRA %c dashboard cards v1.6.1 ", "background:#2E8B57;color:#fff;font-weight:700", "background:#E8E2D6;color:#343A40");
+console.info("%c A CORUJEIRA %c dashboard cards v1.6.2 ", "background:#2E8B57;color:#fff;font-weight:700", "background:#E8E2D6;color:#343A40");
 
 // ---- corujeira-fire-card.js
 /* A Corujeira fire tile: always-on fire risk strip for the top of the dashboard.
@@ -620,7 +620,7 @@ if (!window.customCards.find(c => c.type === "corujeira-forecast-card"))
    Options: speaker ("hoot" or "nimbu", default hoot), swap (tap the speaker to swap between Hoot and Nimbu,
    remembered per device; default on unless navigate is set), title / subtitle (override the configured
    speaker's name, defaults "Hoot" / "Land wizard" and "Nimbu" / "Land cat"), max (lines shown, default 6),
-   fire (fire lines, default true), burn_window (low-risk burning nudge Oct to May, default true),
+   fire (fire lines, default true), burn_window (low-risk work window nudge May to Oct, default true),
    fire_risk / fire_risk_tomorrow / alert_level / fires_nearby (entity ids, default Vigia's),
    colors (per kind: mushroom, plant, fire, frost, rain, wind, heat, power, water),
    navigate (tapping Hoot opens e.g. "#weather"), stale_hours (drop weather advice older than this, default 18).
@@ -844,7 +844,7 @@ class CorujeiraHootCard extends HTMLElement {
     clearTimeout(this._talk); this._talk = setTimeout(() => cat.classList.remove("talk"), 1500);
   }
 
-  // Fire lines from Vigia: an active alert first, then today's or tomorrow's risk, then a quiet burning window.
+  // Fire lines from Vigia: an active alert first, then today's or tomorrow's risk, then a low-risk window for spark work.
   _fire() {
     const h = this._hass, c = this._c, out = [];
     if (!h || !c.fire) return out;
@@ -868,7 +868,8 @@ class CorujeiraHootCard extends HTMLElement {
         : `Fire risk ${RISK[top]} ${day}: no burning, and keep spark-making tools away from dry grass.` });
     } else if (c.burn_window && r0 != null && r0 <= 2 && (r1 == null || r1 <= 2)) {
       const m = new Date().getMonth() + 1;
-      if (m >= 10 || m <= 5) out.push({ pri: 3, kind: "fire", text: "Fire risk low: a fair window to burn pruning piles, once the burn is registered with ICNF or the câmara." });
+      // Only in the dry months, when a low-risk day is worth noticing; in winter it is always low.
+      if (m >= 5 && m <= 10) out.push({ pri: 3, kind: "fire", text: "Fire risk low: a good window for grinding, welding and chainsaw work, or a fire in the sauna and fire pit." });
     }
     return out;
   }
