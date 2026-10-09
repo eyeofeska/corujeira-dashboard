@@ -1,0 +1,83 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="232" height="268" class="owl" viewBox="0 0 64 74" role="img"><style>.owl, .cat { display: block; overflow: visible; }
+.lids > * { transform-box: fill-box; transform-origin: 50% 0px; transform: scaleY(0); animation: 7s ease 0s infinite normal none running blink; }
+@keyframes blink { 
+  0%, 95% { transform: scaleY(0); }
+  96.5%, 97.5% { transform: scaleY(1); }
+  99%, 100% { transform: scaleY(0); }
+}
+.cat .fur { stroke: color-mix(in srgb, var(--x, #343A40) 22%, transparent); stroke-width: 0.6; }
+.cat .tail { transform-box: view-box; transform-origin: 20px 66px; animation: 6s ease-in-out 0s infinite normal none running swish; }
+@keyframes swish { 
+  0%, 100% { transform: rotate(4deg); }
+  50% { transform: rotate(-7deg); }
+}
+.cat .ear.l { transform-box: view-box; transform-origin: 24px 28px; animation: 9s ease 0s infinite normal none running flick; }
+@keyframes flick { 
+  0%, 60%, 64%, 100% { transform: rotate(0deg); }
+  62% { transform: rotate(-12deg); }
+}
+.cat .head { transform-box: view-box; transform-origin: 32px 46px; animation: 11s ease-in-out 0s infinite normal none running tilt; }
+@keyframes tilt { 
+  0%, 84%, 100% { transform: rotate(0deg); }
+  88%, 96% { transform: rotate(-5deg); }
+}
+.cat .mouth { transform-box: fill-box; transform-origin: 50% 0px; transform: scaleY(0); animation: 11s ease 0s infinite normal none running meow; }
+.cat .shut { animation: 11s ease 0s infinite normal none running shut; }
+@keyframes meow { 
+  0%, 88%, 96%, 100% { transform: scaleY(0); }
+  89.5%, 94.5% { transform: scaleY(1); }
+}
+@keyframes shut { 
+  0%, 88%, 96%, 100% { opacity: 1; }
+  89%, 95% { opacity: 0; }
+}
+.cat .mew path { opacity: 0; animation: 11s ease 0s infinite normal none running mew; }
+.cat .mew path:nth-child(2) { animation-delay: 0.12s; }
+.cat .mew path:nth-child(3) { animation-delay: 0.24s; }
+@keyframes mew { 
+  0%, 89%, 98%, 100% { opacity: 0; transform: translateX(-2px); }
+  91%, 95% { opacity: 0.9; transform: translateX(0px); }
+}
+.cat.talk .mouth { animation: 1.3s ease 0s 1 normal none running say; }
+.cat.talk .shut { animation: 1.3s ease 0s 1 normal none running sayshut; }
+.cat.talk .head { animation: 1.3s ease 0s 1 normal none running saytilt; }
+.cat.talk .mew path { animation: 1.3s ease 0s 1 normal none running saymew; }
+.cat.talk .mew path:nth-child(2) { animation-delay: 0.1s; }
+.cat.talk .mew path:nth-child(3) { animation-delay: 0.2s; }
+@keyframes say { 
+  0%, 100% { transform: scaleY(0); }
+  15%, 70% { transform: scaleY(1); }
+  85% { transform: scaleY(0); }
+}
+@keyframes sayshut { 
+  0%, 90%, 100% { opacity: 1; }
+  10%, 80% { opacity: 0; }
+}
+@keyframes saytilt { 
+  0%, 100% { transform: rotate(0deg); }
+  20%, 75% { transform: rotate(-5deg); }
+}
+@keyframes saymew { 
+  0%, 100% { opacity: 0; transform: translateX(-2px); }
+  25%, 70% { opacity: 0.9; transform: translateX(0px); }
+}
+@media (prefers-reduced-motion: reduce) {
+  .lids > *, .cat .tail, .cat .ear, .cat .head, .cat .mouth, .cat .shut, .cat .mew path { animation: auto ease 0s 1 normal none running none; }
+}</style>
+  <ellipse cx="32" cy="71" rx="15" ry="2.2" fill="rgba(52,58,64,.14)"></ellipse>
+  <ellipse cx="32" cy="47" rx="22" ry="23" fill="#8A6A4F"></ellipse>
+  <path d="M10.6 46c-2.6 6 .4 13.6 6 16.4-1.6-6-1.4-11 1-15.6z" fill="#6F533D"></path>
+  <path d="M53.4 46c2.6 6-.4 13.6-6 16.4 1.6-6 1.4-11-1-15.6z" fill="#6F533D"></path>
+  <ellipse cx="32" cy="56" rx="13" ry="12.5" fill="#EADCC3"></ellipse>
+  <path d="M26.5 52.5l2 1.8 2-1.8M33.5 52.5l2 1.8 2-1.8M30 57.5l2 1.8 2-1.8M26.5 62l2 1.6 2-1.6M33.5 62l2 1.6 2-1.6" fill="none" stroke="#C9B48F" stroke-width="1.2" stroke-linecap="round" stroke-linejoin="round"></path>
+  <circle cx="23.5" cy="40" r="9.2" fill="#F5EDDE"></circle><circle cx="40.5" cy="40" r="9.2" fill="#F5EDDE"></circle>
+  <g class="eyes"><circle cx="24.3" cy="40.6" r="4.6" fill="#2B2B2B"></circle><circle cx="39.7" cy="40.6" r="4.6" fill="#2B2B2B"></circle>
+  <circle cx="25.8" cy="39" r="1.5" fill="#fff"></circle><circle cx="41.2" cy="39" r="1.5" fill="#fff"></circle></g>
+  <g class="lids"><circle cx="24.3" cy="40.6" r="5.2" fill="#F5EDDE"></circle><circle cx="39.7" cy="40.6" r="5.2" fill="#F5EDDE"></circle></g>
+  <path d="M29.2 46.4h5.6L32 51.2z" fill="#E8913A"></path>
+  <path d="M26 69.5l1.4-2.4 1.4 2.4M35.2 69.5l1.4-2.4 1.4 2.4" fill="none" stroke="#E8913A" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"></path>
+  <path d="M15.5 27.5 33.5 1.5c1.2 4 4.6 7.4 8.4 9.2L48.5 27.5z" fill="#2E5E44"></path>
+  <path d="M21.4 21.3c6 1.5 15.5 1.5 22.4-.6" fill="none" stroke="#D4A72C" stroke-width="1.8" stroke-linecap="round"></path>
+  <ellipse cx="32" cy="27.5" rx="20" ry="3.6" fill="#244D37"></ellipse>
+  <path d="M30 12.2l1.1 2.3 2.5.3-1.8 1.7.5 2.5-2.3-1.2-2.2 1.2.4-2.5-1.8-1.7 2.5-.3z" fill="#D4A72C"></path>
+</svg>

@@ -1,8 +1,10 @@
-/* A Corujeira Hoot card: Hoot the land wizard, a little owl in a wizard's hat with a speech bubble of
-   what the land needs. Weather advice (frost, rain, wind, heat, power, water, planting, mushrooms) comes
+/* A Corujeira Hoot card: a land speaker with a speech bubble of what the land needs. Two speakers:
+   Hoot the land wizard (an owl in a wizard's hat) and Nimbu the land cat (black, fluffy, meows). Weather advice (frost, rain, wind, heat, power, water, planting, mushrooms) comes
    from the meteogram card, which publishes it on the page and keeps the last set in localStorage; fire
    advice comes from Vigia's sensors. Each line gets a small icon you can recolour.
-   Options: title (default "Hoot"), subtitle (default "Land wizard"), max (lines shown, default 6),
+   Options: speaker ("hoot" or "nimbu", default hoot), swap (tap the speaker to swap between Hoot and Nimbu,
+   remembered per device; default on unless navigate is set), title / subtitle (override the configured
+   speaker's name, defaults "Hoot" / "Land wizard" and "Nimbu" / "Land cat"), max (lines shown, default 6),
    fire (fire lines, default true), burn_window (low-risk burning nudge Oct to May, default true),
    fire_risk / fire_risk_tomorrow / alert_level / fires_nearby (entity ids, default Vigia's),
    colors (per kind: mushroom, plant, fire, frost, rain, wind, heat, power, water),
@@ -45,6 +47,60 @@ const OWL = `<svg class="owl" viewBox="0 0 64 74" aria-hidden="true">
   <ellipse cx="32" cy="27.5" rx="20" ry="3.6" fill="#244D37"/>
   <path d="M30 12.2l1.1 2.3 2.5.3-1.8 1.7.5 2.5-2.3-1.2-2.2 1.2.4-2.5-1.8-1.7 2.5-.3z" fill="#D4A72C"/>
 </svg>`;
+// Fluffy outline: points on an ellipse with a swept tuft between each pair, seeded so it never changes.
+// floor flattens the bottom (a cat sitting on the ground).
+const fluff = (cx, cy, rx, ry, n, d, seed, floor) => {
+  let s = seed;
+  const rnd = () => (s = (s * 9301 + 49297) % 233280) / 233280;
+  const at = (a, f) => { const y = cy + ry * f * Math.sin(a); return [cx + rx * f * Math.cos(a), floor != null ? Math.min(y, floor) : y]; };
+  const f = v => v.toFixed(2), step = 2 * Math.PI / n, a0 = -Math.PI / 2;
+  let p = at(a0, 1), out = `M${f(p[0])} ${f(p[1])}`;
+  for (let i = 0; i < n; i++) {
+    const a = a0 + i * step, t = at(a + step * (.55 + rnd() * .15), 1 + d * (.6 + rnd() * .8));
+    const c1 = at(a + step * .3, 1.02), c2 = at(a + step * .85, .99), e = at(a + step, 1 - rnd() * d * .2);
+    out += `Q${f(c1[0])} ${f(c1[1])} ${f(t[0])} ${f(t[1])}Q${f(c2[0])} ${f(c2[1])} ${f(e[0])} ${f(e[1])}`;
+  }
+  return out + "Z";
+};
+// Nimbu: a black fluffy cat with gold eyes, the resident Gato Shaman. He blinks, swishes his tail and
+// meows now and then (tap him to make him meow, or to swap with Hoot when swap is on).
+const FUR = "#262321";
+const CAT = `<svg class="cat" viewBox="0 0 64 74" aria-hidden="true">
+  <ellipse cx="32" cy="71" rx="17" ry="2.2" fill="rgba(52,58,64,.16)"/>
+  <g class="tail"><path d="M20 66c-7 1-13-3-13.5-10.5-.4-5.6 3.6-9.4 1.6-14" fill="none" stroke="${FUR}" stroke-width="7" stroke-linecap="round"/>
+    <path class="fur" d="${fluff(8, 41, 4.2, 4.6, 9, .26, 7)}" fill="${FUR}"/></g>
+  <path class="fur" d="${fluff(32, 55, 17.5, 15.5, 23, .085, 3, 70.2)}" fill="${FUR}"/>
+  <path d="${fluff(32, 53.5, 7, 8, 11, .14, 11)}" fill="#35312E"/>
+  <ellipse cx="26.2" cy="69" rx="4.3" ry="2.5" fill="#2E2A27"/><ellipse cx="37.8" cy="69" rx="4.3" ry="2.5" fill="#2E2A27"/>
+  <path d="M25 68.6v1.4M27.4 68.6v1.4M36.6 68.6v1.4M39 68.6v1.4" stroke="#4A4541" stroke-width=".6" stroke-linecap="round"/>
+  <g class="head">
+    <g class="ear l"><path class="fur" d="M17.6 31 19.4 11.8 30.2 22.6z" fill="${FUR}" stroke-linejoin="round"/><path d="M20.4 27.4 21.2 16.6 27.6 23z" fill="#5C4046"/>
+      <path d="M21.4 21.5l2 2.6M22 18.8l1.4 3" stroke="#6E6862" stroke-width=".6" stroke-linecap="round"/></g>
+    <g class="ear r"><path class="fur" d="M46.4 31 44.6 11.8 33.8 22.6z" fill="${FUR}" stroke-linejoin="round"/><path d="M43.6 27.4 42.8 16.6 36.4 23z" fill="#5C4046"/>
+      <path d="M42.6 21.5l-2 2.6M42 18.8l-1.4 3" stroke="#6E6862" stroke-width=".6" stroke-linecap="round"/></g>
+    <path d="M21 46.6c6.6 3.6 15.4 3.6 22 0" fill="none" stroke="#2E5E44" stroke-width="2.4" stroke-linecap="round"/>
+    <path class="fur" d="${fluff(32, 34.5, 15.6, 13, 21, .1, 5)}" fill="${FUR}"/>
+    <path d="M32 48.2l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z" fill="#D4A72C"/>
+    <g class="eyes"><ellipse cx="25.6" cy="34" rx="3.6" ry="3.1" fill="#D9B93C"/><ellipse cx="38.4" cy="34" rx="3.6" ry="3.1" fill="#D9B93C"/>
+      <ellipse class="pupil" cx="25.8" cy="34" rx="1.1" ry="2.7" fill="#111"/><ellipse class="pupil" cx="38.2" cy="34" rx="1.1" ry="2.7" fill="#111"/>
+      <circle cx="26.9" cy="32.7" r=".8" fill="#fff"/><circle cx="39.5" cy="32.7" r=".8" fill="#fff"/></g>
+    <g class="lids"><ellipse cx="25.6" cy="34" rx="4.1" ry="3.6" fill="${FUR}"/><ellipse cx="38.4" cy="34" rx="4.1" ry="3.6" fill="${FUR}"/></g>
+    <path d="M30.5 38.6h3l-1.5 1.7z" fill="#B98088"/>
+    <path class="shut" d="M32 40.3v.9M29.8 41.2c.8.8 1.6.8 2.2 0 .6.8 1.4.8 2.2 0" fill="none" stroke="#8A847C" stroke-width=".8" stroke-linecap="round"/>
+    <g class="mouth"><path d="M29 41c.8 4.4 5.2 4.4 6 0z" fill="#6E2E35"/><path d="M30.6 43.6c.7-1 2.1-1 2.8 0-.7.6-2.1.6-2.8 0z" fill="#C97F87"/></g>
+    <path d="M28.6 40.2 18 38.6M28.6 41.2l-10.4 1M35.4 40.2 46 38.6M35.4 41.2l10.4 1" stroke="#9A938A" stroke-width=".5" stroke-linecap="round" opacity=".8"/>
+  </g>
+  <g class="mew" fill="none" stroke="#9A938A" stroke-width="1.2" stroke-linecap="round">
+    <path d="M50 37.5q1.6 2.5 0 5"/><path d="M53.6 35.5q2.8 4.5 0 9"/><path d="M57.2 33.5q4 6.5 0 13"/></g>
+</svg>`;
+const SPEAKERS = {
+  hoot: { art: OWL, title: "Hoot", subtitle: "Land wizard",
+    hi: h => h < 5 ? "Hoo, up late." : h < 12 ? "Hoo! Good morning." : h < 18 ? "Hoo! Good afternoon." : "Hoo! Good evening.",
+    lead: "Here's what the land wants:", quiet: "All quiet on the land. Enjoy it.", wait: "Hoo… listening to the forecast." },
+  nimbu: { art: CAT, title: "Nimbu", subtitle: "Land cat",
+    hi: h => h < 5 ? "Mrrp… up late too?" : h < 12 ? "Mrrrow! Good morning." : h < 18 ? "Mrrp! Good afternoon." : "Mrrow. Good evening.",
+    lead: "The land told me this:", quiet: "All quiet on the land. Nap time.", wait: "Mrrp… listening to the forecast." },
+};
 const RISK = { 1: "low", 2: "moderate", 3: "high", 4: "very high", 5: "maximum" };
 const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;" }[c]));
 // the lead phrase (up to the first colon, or the first sentence) in bold so the lines scan
@@ -54,12 +110,15 @@ const load = () => { try { return JSON.parse(localStorage.getItem("corujeira-lan
 class CorujeiraHootCard extends HTMLElement {
   setConfig(c) {
     this._c = {
-      title: "Hoot", subtitle: "Land wizard", max: 6, fire: true, burn_window: true, stale_hours: 18,
+      speaker: "hoot", swap: !c.navigate, max: 6, fire: true, burn_window: true, stale_hours: 18,
       fire_risk: "sensor.vigia_fire_risk", fire_risk_tomorrow: "sensor.vigia_fire_risk_tomorrow",
       alert_level: "sensor.vigia_alert_level", fires_nearby: "sensor.vigia_fires_nearby", ...c,
     };
     this._colors = { ...KINDS, ...(c.colors || {}) };
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
+    let saved = null;
+    try { saved = this._c.swap ? localStorage.getItem("corujeira-land:speaker") : null; } catch (e) { /* storage blocked */ }
+    this._who = SPEAKERS[saved] ? saved : SPEAKERS[this._c.speaker] ? this._c.speaker : "hoot";
     this._build();
     this._render();
   }
@@ -92,11 +151,31 @@ class CorujeiraHootCard extends HTMLElement {
         .wrap { display:flex; align-items:flex-start; gap:10px; }
         .who { flex:none; width:64px; display:flex; flex-direction:column; align-items:center; gap:2px; }
         .who.link { cursor:pointer; -webkit-tap-highlight-color:transparent; }
-        .owl { width:58px; height:67px; display:block; }
-        .owl .lids circle { transform-box:fill-box; transform-origin:50% 0; transform:scaleY(0); animation:blink 7s infinite; }
-        .owl .lids circle + circle { animation-delay:.02s; }
+        .owl, .cat { width:58px; height:67px; display:block; overflow:visible; }
+        .lids > * { transform-box:fill-box; transform-origin:50% 0; transform:scaleY(0); animation:blink 7s infinite; }
         @keyframes blink { 0%, 95% { transform:scaleY(0); } 96.5%, 97.5% { transform:scaleY(1); } 99%, 100% { transform:scaleY(0); } }
-        @media (prefers-reduced-motion: reduce) { .owl .lids circle { animation:none; } }
+        /* Nimbu: a faint rim so the black fur still reads on a dark card */
+        .cat .fur { stroke:color-mix(in srgb, var(--primary-text-color, #343A40) 22%, transparent); stroke-width:.6; }
+        .cat .tail { transform-box:view-box; transform-origin:20px 66px; animation:swish 6s ease-in-out infinite; }
+        @keyframes swish { 0%, 100% { transform:rotate(4deg); } 50% { transform:rotate(-7deg); } }
+        .cat .ear.l { transform-box:view-box; transform-origin:24px 28px; animation:flick 9s infinite; }
+        @keyframes flick { 0%, 60%, 64%, 100% { transform:rotate(0); } 62% { transform:rotate(-12deg); } }
+        .cat .head { transform-box:view-box; transform-origin:32px 46px; animation:tilt 11s ease-in-out infinite; }
+        @keyframes tilt { 0%, 84%, 100% { transform:rotate(0); } 88%, 96% { transform:rotate(-5deg); } }
+        .cat .mouth { transform-box:fill-box; transform-origin:50% 0; transform:scaleY(0); animation:meow 11s infinite; }
+        .cat .shut { animation:shut 11s infinite; }
+        @keyframes meow { 0%, 88%, 96%, 100% { transform:scaleY(0); } 89.5%, 94.5% { transform:scaleY(1); } }
+        @keyframes shut { 0%, 88%, 96%, 100% { opacity:1; } 89%, 95% { opacity:0; } }
+        .cat .mew path { opacity:0; animation:mew 11s infinite; }
+        .cat .mew path:nth-child(2) { animation-delay:.12s; } .cat .mew path:nth-child(3) { animation-delay:.24s; }
+        @keyframes mew { 0%, 89%, 98%, 100% { opacity:0; transform:translateX(-2px); } 91%, 95% { opacity:.9; transform:translateX(0); } }
+        .cat.talk .mouth { animation:say 1.3s 1; } .cat.talk .shut { animation:sayshut 1.3s 1; } .cat.talk .head { animation:saytilt 1.3s 1; }
+        .cat.talk .mew path { animation:saymew 1.3s 1; } .cat.talk .mew path:nth-child(2) { animation-delay:.1s; } .cat.talk .mew path:nth-child(3) { animation-delay:.2s; }
+        @keyframes say { 0%, 100% { transform:scaleY(0); } 15%, 70% { transform:scaleY(1); } 85% { transform:scaleY(0); } }
+        @keyframes sayshut { 0%, 90%, 100% { opacity:1; } 10%, 80% { opacity:0; } }
+        @keyframes saytilt { 0%, 100% { transform:rotate(0); } 20%, 75% { transform:rotate(-5deg); } }
+        @keyframes saymew { 0%, 100% { opacity:0; transform:translateX(-2px); } 25%, 70% { opacity:.9; transform:translateX(0); } }
+        @media (prefers-reduced-motion: reduce) { .lids > *, .cat .tail, .cat .ear, .cat .head, .cat .mouth, .cat .shut, .cat .mew path { animation:none; } }
         .name { font-size:13px; font-weight:700; letter-spacing:.08em; text-transform:uppercase; color:var(--primary-text-color); line-height:1.1; }
         .sub { font-size:10.5px; color:var(--secondary-text-color); text-align:center; line-height:1.15; }
         .bubble { position:relative; flex:1; min-width:0; margin-top:6px; padding:10px 12px 11px; border-radius:16px;
@@ -115,20 +194,41 @@ class CorujeiraHootCard extends HTMLElement {
       </style>
       <ha-card>
         <div class="wrap">
-          <div class="who">${OWL}<div class="name">${esc(this._c.title)}</div><div class="sub">${esc(this._c.subtitle)}</div></div>
+          <div class="who"><div class="art"></div><div class="name"></div><div class="sub"></div></div>
           <div class="bubble"><div class="hello"></div><ul></ul><button class="more" hidden></button></div>
         </div>
       </ha-card>`;
-    const nav = this._c.navigate;
-    if (nav) {
-      const w = this.shadowRoot.querySelector(".who");
-      w.classList.add("link");
-      w.addEventListener("click", () => {
+    const nav = this._c.navigate, w = this.shadowRoot.querySelector(".who");
+    w.classList.add("link");
+    w.addEventListener("click", () => {
+      if (nav) {
         history.pushState(null, "", nav.startsWith("#") ? location.pathname + location.search + nav : nav);
         window.dispatchEvent(new CustomEvent("location-changed", { detail: { replace: false } }));
-      });
-    }
+      } else if (this._c.swap) {
+        this._who = this._who === "hoot" ? "nimbu" : "hoot";
+        try { localStorage.setItem("corujeira-land:speaker", this._who); } catch (e) { /* storage blocked */ }
+        this._speaker();
+        this._render();
+      }
+      this._meow();
+    });
+    this._speaker();
     this.shadowRoot.querySelector(".more").addEventListener("click", () => { this._open = !this._open; this._render(); });
+  }
+
+  // Put the active speaker's drawing and name in place.
+  _speaker() {
+    const sp = SPEAKERS[this._who], mine = this._who === this._c.speaker, r = this.shadowRoot;
+    r.querySelector(".art").innerHTML = sp.art;
+    r.querySelector(".name").textContent = (mine && this._c.title) || sp.title;
+    r.querySelector(".sub").textContent = (mine && this._c.subtitle) || sp.subtitle;
+  }
+  // A meow on demand (Nimbu only): replay the mouth and sound lines once.
+  _meow() {
+    const cat = this.shadowRoot.querySelector(".cat");
+    if (!cat) return;
+    cat.classList.remove("talk"); void cat.getBoundingClientRect(); cat.classList.add("talk");
+    clearTimeout(this._talk); this._talk = setTimeout(() => cat.classList.remove("talk"), 1500);
   }
 
   // Fire lines from Vigia: an active alert first, then today's or tomorrow's risk, then a quiet burning window.
@@ -166,10 +266,9 @@ class CorujeiraHootCard extends HTMLElement {
     const weather = fresh ? land.items || [] : [];
     const all = [...this._fire(), ...weather].sort((a, b) => a.pri - b.pri);
     const max = this._c.max, shown = this._open ? all : all.slice(0, max);
-    const hr = new Date().getHours(), hi = hr < 5 ? "Hoo, up late." : hr < 12 ? "Hoo! Good morning." : hr < 18 ? "Hoo! Good afternoon." : "Hoo! Good evening.";
+    const sp = SPEAKERS[this._who] || SPEAKERS.hoot, hi = sp.hi(new Date().getHours());
     const hello = this.shadowRoot.querySelector(".hello");
-    hello.textContent = !land && !all.length ? "Hoo… listening to the forecast."
-      : all.length ? `${hi} Here's what the land wants:` : `${hi} All quiet on the land. Enjoy it.`;
+    hello.textContent = !land && !all.length ? sp.wait : all.length ? `${hi} ${sp.lead}` : `${hi} ${sp.quiet}`;
     this.shadowRoot.querySelector("ul").innerHTML = shown.map(x => {
       const col = this._colors[x.kind] || this._colors.plant;
       return `<li><span class="ic" style="color:${esc(col)};background:color-mix(in srgb, ${esc(col)} 13%, transparent)">${icon(x.kind)}</span><span>${lead(x.text)}</span></li>`;
@@ -182,5 +281,5 @@ class CorujeiraHootCard extends HTMLElement {
 if (!customElements.get("corujeira-hoot-card")) customElements.define("corujeira-hoot-card", CorujeiraHootCard);
 window.customCards = window.customCards || [];
 if (!window.customCards.find(c => c.type === "corujeira-hoot-card"))
-  window.customCards.push({ type: "corujeira-hoot-card", name: "A Corujeira Hoot", description: "Hoot the land wizard: land advice from the forecast and fire watch in a speech bubble." });
+  window.customCards.push({ type: "corujeira-hoot-card", name: "A Corujeira Hoot", description: "Hoot the land wizard or Nimbu the land cat: land advice from the forecast and fire watch in a speech bubble." });
 })();
