@@ -15,7 +15,7 @@
      pump_run_time: input_select of run times such as "30 min" (optional, shown as pills)
      pump_power: power sensor of the pump (optional, shown while running)
      pump_icon:  default corujeira:creek-pump
-     ink:        line colour of the drawing (default the theme's text colour)
+     ink:        line colour of the drawing (default a soft charcoal: the theme's text colour, softened)
      tap_action: { action: more-info | navigate | none, navigation_path } (default more-info on entity); applies to the tank and figures
    Remove this resource to revert. */
 (() => {
@@ -61,23 +61,31 @@ function brush(pts, w, seed, { taper = .5, wobble = 1.6 } = {}) {
   const dot = ([x, y, q]) => `M${f1(x - q)} ${f1(y)}a${f1(q)} ${f1(q)} 0 1 0 ${f1(2 * q)} 0a${f1(q)} ${f1(q)} 0 1 0 ${f1(-2 * q)} 0Z`;
   return `M${lft.join("L")}L${rgt.reverse().join("L")}Z${dot(wid[0])}${dot(wid[wid.length - 1])}`;
 }
-// The tank's outline, as hand-placed points running clockwise from the top of the dome.
-const BODY = [[552, 186], [740, 196], [850, 224], [905, 268], [930, 330], [936, 420], [938, 560], [936, 724], [925, 764], [893, 778],
-  [700, 781], [552, 779], [400, 781], [205, 778], [175, 765], [164, 724], [162, 560], [164, 420], [170, 330], [195, 268], [252, 224], [362, 196]];
+// The tank's outline, as hand-placed points running clockwise from the top-left corner of the raised top.
+const BODY = [[226, 168], [370, 165], [506, 168], [511, 176], [620, 176], [724, 179], [805, 187], [880, 198], [882, 234], [884, 266],
+  [904, 286], [930, 320], [938, 390], [939, 560], [937, 725], [925, 765], [893, 778], [700, 781], [552, 779], [400, 781], [205, 778],
+  [175, 765], [163, 725], [161, 560], [162, 390], [170, 320], [196, 286], [222, 266], [224, 220]];
+const ring = (cx, cy, r, from = -1.4) => Array.from({ length: 11 }, (_, i) => {
+  const a = from + i * 6.6 / 10; return [cx + r * Math.cos(a) * (1 + .03 * Math.sin(i * 2.1)), cy + r * Math.sin(a)]; });
 let DRAWING;
 function drawing() {
   if (DRAWING) return DRAWING;
   const clip = spline(BODY, true, 8).map(([x, y], i) => `${i ? "L" : "M"}${f1(x)} ${f1(y)}`).join("") + "Z";
   const ink = [
-    brush([...BODY, [552, 186], [650, 189]], 16, 11, { taper: .75 }),                                 // outline, overshooting where it closes
-    brush([[462, 192], [466, 160], [552, 149], [638, 159], [642, 193]], 13, 21),                     // lid
-    brush([[524, 150], [531, 130], [573, 128], [580, 148]], 11, 22),                                // lid handle
-    brush([[176, 470], [360, 487], [552, 493], [744, 486], [926, 468]], 8, 31, { taper: .3 }),       // ribs
-    brush([[176, 650], [360, 667], [552, 673], [744, 666], [926, 648]], 8, 33, { taper: .3 }),
-    brush([[503, 775], [502, 724], [518, 696], [552, 687], [586, 695], [602, 722], [601, 775]], 9, 41), // outlet
-    brush([[150, 811], [300, 809], [470, 813], [640, 809], [810, 812], [952, 809]], 12, 51, { taper: .25 }), // ground
+    brush([...BODY, [226, 168], [330, 166]], 11, 11, { taper: .75 }),                                 // outline, overshooting where it closes
+    brush([[230, 267], [420, 270], [600, 266], [878, 269]], 7, 12, { taper: .4 }),                   // collar
+    brush([[236, 258], [360, 220], [500, 183]], 6, 13, { taper: .3 }),                                // shading on the top
+    brush([[618, 184], [790, 202], [872, 256]], 6, 14, { taper: .3 }),
+    brush(ring(552, 224, 29), 7, 15, { taper: .6 }),                                                  // inlet
+    brush([[250, 166], [254, 140], [262, 136], [262, 122], [356, 116], [452, 120], [454, 134], [472, 138], [476, 166]], 9, 21), // lid
+    brush([[176, 470], [360, 487], [552, 493], [744, 486], [926, 468]], 6, 31, { taper: .3 }),       // ribs
+    brush([[176, 650], [360, 667], [552, 673], [744, 666], [926, 648]], 6, 33, { taper: .3 }),
+    brush([[503, 775], [502, 724], [518, 696], [552, 687], [586, 695], [602, 722], [601, 775]], 7, 41), // outlet
+    brush([[150, 811], [300, 809], [470, 813], [640, 809], [810, 812], [952, 809]], 9, 51, { taper: .25 }), // ground
   ];
-  return (DRAWING = { clip, ink: ink.join("") });
+  const lid = spline([[252, 166], [255, 140], [263, 136], [263, 123], [356, 117], [451, 121], [453, 135], [471, 139], [474, 166]], true, 6)
+    .map(([x, y], i) => `${i ? "L" : "M"}${f1(x)} ${f1(y)}`).join("") + "Z";
+  return (DRAWING = { clip, lid, ink: ink.join("") });
 }
 const mmss = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
   return h ? `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${m}:${String(x).padStart(2, "0")}`; };
@@ -90,7 +98,7 @@ class CorujeiraSiloCard extends HTMLElement {
     // 100% sits below the collar line so the dome above it reads as headroom, not storage.
     this._top = BOTTOM - (BOTTOM - FULL_LINE) * 100 / (100 + this._c.headroom);
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
-    const col = this._c.color, pump = !!this._c.pump, D = drawing(), ink = this._c.ink || "var(--primary-text-color)";
+    const col = this._c.color, pump = !!this._c.pump, D = drawing(), ink = this._c.ink || "color-mix(in srgb, var(--primary-text-color) 68%, var(--card-background-color, #fff))";
     this.shadowRoot.innerHTML = `
       <style>
         :host { display:block; }
@@ -100,6 +108,7 @@ class CorujeiraSiloCard extends HTMLElement {
         svg { flex:none; height:136px; width:auto; overflow:visible; }
         .ink { stroke:var(--primary-text-color); fill:none; stroke-linecap:round; stroke-linejoin:round; }
         .solid { fill:${ink}; }
+        .wash { fill:${ink}; opacity:.35; }
         .water { fill:${col}; }
         .crest { fill:color-mix(in srgb, ${col} 55%, #fff); }
         .max { stroke:color-mix(in srgb, ${ink} 45%, transparent); stroke-width:6; stroke-linecap:round; stroke-dasharray:20 18 30 16 14 20 26 17; fill:none; }
@@ -107,7 +116,7 @@ class CorujeiraSiloCard extends HTMLElement {
         .on .stream { opacity:.9; }
         @keyframes pour { to { stroke-dashoffset:-48; } }
         .pct { font:700 150px 'Lato',sans-serif; text-anchor:middle; letter-spacing:-4px; }
-        .pct.dark { fill:${ink}; }
+        .pct.dark { fill:var(--primary-text-color); }
         .pct.light { fill:#fff; }
         .pct.low.dark { fill:#C2574A; }
         .wave { animation:drift 6s linear infinite; }
@@ -158,9 +167,10 @@ class CorujeiraSiloCard extends HTMLElement {
                 <path class="crest wave b" d="${this._wave(1)}"/>
                 <path class="water wave" d="${this._wave(0)}"/>
               </g>
-              ${pump ? `<path class="stream" d="M552 196 V780"/>` : ""}
+              ${pump ? `<path class="stream" d="M552 256 V780"/>` : ""}
               <path class="max" d="M150 ${this._top.toFixed(0)} H950"/>
             </g>
+            <path class="wash" d="${D.lid}"/>
             <path class="solid" d="${D.ink}"/>
             <text class="pct dark" x="552" y="628"></text>
             <g clip-path="url(#inside)"><text class="pct light" x="552" y="628" mask="url(#wet)"></text></g>
@@ -249,7 +259,7 @@ class CorujeiraSiloCard extends HTMLElement {
     const p = lvl == null ? 0 : Math.max(0, Math.min(100 + c.headroom, lvl));
     const y = BOTTOM - (BOTTOM - this._top) * p / 100;
     this._el.levels.forEach(g => { g.setAttribute("transform", `translate(0 ${y})`); g.style.transform = `translateY(${y}px)`; });
-    if (this._el.stream) this._el.stream.setAttribute("d", `M552 196 V${Math.max(196, y + 6).toFixed(0)}`);
+    if (this._el.stream) this._el.stream.setAttribute("d", `M552 256 V${Math.max(256, y + 6).toFixed(0)}`);
     const low = lvl != null && lvl <= c.low;
     this._el.pcts.forEach(t => {
       t.innerHTML = lvl == null ? "–" : `${Math.round(lvl)}<tspan font-size="90" dx="6">%</tspan>`;
