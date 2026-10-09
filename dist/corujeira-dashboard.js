@@ -1,6 +1,6 @@
-/* A Corujeira dashboard cards v1.3.0. Built from cards/ by scripts/build.mjs; edit the files in cards/, not this one.
+/* A Corujeira dashboard cards v1.4.0. Built from cards/ by scripts/build.mjs; edit the files in cards/, not this one.
    Contains: corujeira-fire-card, corujeira-flow-card, corujeira-forecast-card, corujeira-hoot-card, corujeira-meteogram-card, corujeira-silo-card, corujeira-span-card. */
-console.info("%c A CORUJEIRA %c dashboard cards v1.3.0 ", "background:#2E8B57;color:#fff;font-weight:700", "background:#E8E2D6;color:#343A40");
+console.info("%c A CORUJEIRA %c dashboard cards v1.4.0 ", "background:#2E8B57;color:#fff;font-weight:700", "background:#E8E2D6;color:#343A40");
 
 // ---- corujeira-fire-card.js
 /* A Corujeira fire tile: always-on fire risk strip for the top of the dashboard.
@@ -1641,11 +1641,70 @@ if (!window.customCards.find(c => c.type === "corujeira-meteogram-card"))
      pump_run_time: input_select of run times such as "30 min" (optional, shown as pills)
      pump_power: power sensor of the pump (optional, shown while running)
      pump_icon:  default corujeira:creek-pump
+     ink:        line colour of the drawing (default the theme's text colour)
      tap_action: { action: more-info | navigate | none, navigation_path } (default more-info on entity); applies to the tank and figures
    Remove this resource to revert. */
 (() => {
-const FULL_LINE = 268, BOTTOM = 770;  // y of the collar line and the tank floor in the drawing's viewBox
+const FULL_LINE = 268, BOTTOM = 770;  // y where the dome meets the walls and the tank floor in the drawing's viewBox
 const fmt = n => Math.round(n).toLocaleString("en-GB");
+
+// ---- Hand-drawn ink, in the style of the A Corujeira icons: each line is a filled brush stroke whose width swells
+// and thins along its length, wanders slightly off its path and tapers to rounded ends. Seeded, so it never changes.
+const rng = s => () => { s = (s + 0x6D2B79F5) | 0; let t = Math.imul(s ^ (s >>> 15), 1 | s);
+  t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t; return ((t ^ (t >>> 14)) >>> 0) / 4294967296; };
+// Catmull-Rom spline through hand-placed points, sampled about every `step` units.
+function spline(pts, closed, step = 5) {
+  const P = closed ? [pts[pts.length - 1], ...pts, pts[0], pts[1]] : [pts[0], ...pts, pts[pts.length - 1]], out = [];
+  for (let i = 1; i < P.length - 2; i++) {
+    const [a, b, c, d] = [P[i - 1], P[i], P[i + 1], P[i + 2]], n = Math.max(2, Math.ceil(Math.hypot(c[0] - b[0], c[1] - b[1]) / step));
+    for (let k = 0; k < n; k++) {
+      const t = k / n, t2 = t * t, t3 = t2 * t, f = (p0, p1, p2, p3) =>
+        .5 * (2 * p1 + (-p0 + p2) * t + (2 * p0 - 5 * p1 + 4 * p2 - p3) * t2 + (-p0 + 3 * p1 - 3 * p2 + p3) * t3);
+      out.push([f(a[0], b[0], c[0], d[0]), f(a[1], b[1], c[1], d[1])]);
+    }
+  }
+  out.push(closed ? out[0] : pts[pts.length - 1]);
+  return out;
+}
+const f1 = n => n.toFixed(1);
+function brush(pts, w, seed, { taper = .5, wobble = 1.6 } = {}) {
+  const S = spline(pts, false), r = rng(seed), len = [0];
+  for (let i = 1; i < S.length; i++) len.push(len[i - 1] + Math.hypot(S[i][0] - S[i - 1][0], S[i][1] - S[i - 1][1]));
+  const L = len[len.length - 1], ph = [r(), r(), r(), r()].map(x => x * 6.283), TAU = 6.283;
+  const c1 = L / (260 + r() * 140), c2 = L / (140 + r() * 60), c3 = L / (360 + r() * 140), c4 = L / (180 + r() * 60);
+  const lft = [], rgt = [], wid = [];
+  S.forEach((p, i) => {
+    const a = S[Math.max(0, i - 1)], b = S[Math.min(S.length - 1, i + 1)], dx = b[0] - a[0], dy = b[1] - a[1], m = Math.hypot(dx, dy) || 1;
+    const nx = -dy / m, ny = dx / m, s = len[i] / L;
+    const end = Math.min(1, s / .1, (1 - s) / .1), ease = end * end * (3 - 2 * end);
+    const wv = w * (1 + .16 * Math.sin(TAU * s * c1 + ph[0]) + .07 * Math.sin(TAU * s * c2 + ph[1])) * (taper + (1 - taper) * ease);
+    const off = wobble * (.7 * Math.sin(TAU * s * c3 + ph[2]) + .3 * Math.sin(TAU * s * c4 + ph[3]));
+    const cx = p[0] + nx * off, cy = p[1] + ny * off;
+    lft.push(`${f1(cx + nx * wv / 2)} ${f1(cy + ny * wv / 2)}`);
+    rgt.push(`${f1(cx - nx * wv / 2)} ${f1(cy - ny * wv / 2)}`);
+    wid.push([cx, cy, wv / 2]);
+  });
+  const dot = ([x, y, q]) => `M${f1(x - q)} ${f1(y)}a${f1(q)} ${f1(q)} 0 1 0 ${f1(2 * q)} 0a${f1(q)} ${f1(q)} 0 1 0 ${f1(-2 * q)} 0Z`;
+  return `M${lft.join("L")}L${rgt.reverse().join("L")}Z${dot(wid[0])}${dot(wid[wid.length - 1])}`;
+}
+// The tank's outline, as hand-placed points running clockwise from the top of the dome.
+const BODY = [[552, 186], [740, 196], [850, 224], [905, 268], [930, 330], [936, 420], [938, 560], [936, 724], [925, 764], [893, 778],
+  [700, 781], [552, 779], [400, 781], [205, 778], [175, 765], [164, 724], [162, 560], [164, 420], [170, 330], [195, 268], [252, 224], [362, 196]];
+let DRAWING;
+function drawing() {
+  if (DRAWING) return DRAWING;
+  const clip = spline(BODY, true, 8).map(([x, y], i) => `${i ? "L" : "M"}${f1(x)} ${f1(y)}`).join("") + "Z";
+  const ink = [
+    brush([...BODY, [552, 186], [650, 189]], 16, 11, { taper: .75 }),                                 // outline, overshooting where it closes
+    brush([[462, 192], [466, 160], [552, 149], [638, 159], [642, 193]], 13, 21),                     // lid
+    brush([[524, 150], [531, 130], [573, 128], [580, 148]], 11, 22),                                // lid handle
+    brush([[176, 470], [360, 487], [552, 493], [744, 486], [926, 468]], 8, 31, { taper: .3 }),       // ribs
+    brush([[176, 650], [360, 667], [552, 673], [744, 666], [926, 648]], 8, 33, { taper: .3 }),
+    brush([[503, 775], [502, 724], [518, 696], [552, 687], [586, 695], [602, 722], [601, 775]], 9, 41), // outlet
+    brush([[150, 811], [300, 809], [470, 813], [640, 809], [810, 812], [952, 809]], 12, 51, { taper: .25 }), // ground
+  ];
+  return (DRAWING = { clip, ink: ink.join("") });
+}
 const mmss = s => { s = Math.max(0, Math.round(s)); const h = Math.floor(s / 3600), m = Math.floor(s % 3600 / 60), x = s % 60;
   return h ? `${h}:${String(m).padStart(2, "0")}:${String(x).padStart(2, "0")}` : `${m}:${String(x).padStart(2, "0")}`; };
 
@@ -1657,7 +1716,7 @@ class CorujeiraSiloCard extends HTMLElement {
     // 100% sits below the collar line so the dome above it reads as headroom, not storage.
     this._top = BOTTOM - (BOTTOM - FULL_LINE) * 100 / (100 + this._c.headroom);
     if (!this.shadowRoot) this.attachShadow({ mode: "open" });
-    const col = this._c.color, pump = !!this._c.pump;
+    const col = this._c.color, pump = !!this._c.pump, D = drawing(), ink = this._c.ink || "var(--primary-text-color)";
     this.shadowRoot.innerHTML = `
       <style>
         :host { display:block; }
@@ -1666,15 +1725,15 @@ class CorujeiraSiloCard extends HTMLElement {
         .hit { cursor:pointer; -webkit-tap-highlight-color:transparent; }
         svg { flex:none; height:136px; width:auto; overflow:visible; }
         .ink { stroke:var(--primary-text-color); fill:none; stroke-linecap:round; stroke-linejoin:round; }
-        .solid { fill:var(--primary-text-color); }
+        .solid { fill:${ink}; }
         .water { fill:${col}; }
         .crest { fill:color-mix(in srgb, ${col} 55%, #fff); }
-        .max { stroke:color-mix(in srgb, var(--primary-text-color) 45%, transparent); stroke-width:5; stroke-dasharray:18 14; fill:none; }
+        .max { stroke:color-mix(in srgb, ${ink} 45%, transparent); stroke-width:6; stroke-linecap:round; stroke-dasharray:20 18 30 16 14 20 26 17; fill:none; }
         .stream { stroke:${col}; stroke-width:16; stroke-linecap:round; stroke-dasharray:26 22; fill:none; opacity:0; transition:opacity .4s; animation:pour .7s linear infinite; }
         .on .stream { opacity:.9; }
         @keyframes pour { to { stroke-dashoffset:-48; } }
         .pct { font:700 150px 'Lato',sans-serif; text-anchor:middle; letter-spacing:-4px; }
-        .pct.dark { fill:var(--primary-text-color); }
+        .pct.dark { fill:${ink}; }
         .pct.light { fill:#fff; }
         .pct.low.dark { fill:#C2574A; }
         .wave { animation:drift 6s linear infinite; }
@@ -1717,7 +1776,7 @@ class CorujeiraSiloCard extends HTMLElement {
         <div class="row">
           <svg class="hit tank" viewBox="140 100 820 730" role="img" aria-label="Silo level">
             <defs>
-              <clipPath id="inside"><path d="M232 274 H875 C875 296 933 306 933 385 V730 Q933 770 895 770 H205 Q167 770 167 730 V385 C167 306 232 296 232 274 Z"/></clipPath>
+              <clipPath id="inside"><path d="${D.clip}"/></clipPath>
               <mask id="wet" maskUnits="userSpaceOnUse" x="140" y="100" width="820" height="730"><g class="level"><path class="wave" fill="#fff" d="${this._wave(0)}"/></g></mask>
             </defs>
             <g clip-path="url(#inside)">
@@ -1725,20 +1784,10 @@ class CorujeiraSiloCard extends HTMLElement {
                 <path class="crest wave b" d="${this._wave(1)}"/>
                 <path class="water wave" d="${this._wave(0)}"/>
               </g>
-              ${pump ? `<path class="stream" d="M552 262 V780"/>` : ""}
-              <path class="max" d="M175 ${this._top.toFixed(0)} H925"/>
+              ${pump ? `<path class="stream" d="M552 196 V780"/>` : ""}
+              <path class="max" d="M150 ${this._top.toFixed(0)} H950"/>
             </g>
-            <g class="ink" stroke-width="6">
-              <path d="M232 268 H875"/>
-              <path d="M232 262 Q360 214 505 178"/>
-              <path d="M615 180 Q790 196 876 262"/>
-              <circle cx="552" cy="226" r="30"/>
-              <path d="M167 477 H933 M167 497 H933 M167 652 H933 M167 675 H933"/>
-              <path d="M503 773 V722 Q503 688 552 688 Q602 688 602 722 V773"/>
-            </g>
-            <path class="ink" stroke-width="14" d="M225 268 V166 H508 V175 H725 L882 196 V268 C882 290 940 300 940 385 V730 Q940 777 895 777 H205 Q160 777 160 730 V385 C160 300 225 290 225 268 Z"/>
-            <path class="solid" d="M262 118 H452 V135 H472 V159 H258 V135 H262 Z"/>
-            <rect class="solid" x="140" y="790" width="820" height="24"/>
+            <path class="solid" d="${D.ink}"/>
             <text class="pct dark" x="552" y="628"></text>
             <g clip-path="url(#inside)"><text class="pct light" x="552" y="628" mask="url(#wet)"></text></g>
           </svg>
@@ -1826,7 +1875,7 @@ class CorujeiraSiloCard extends HTMLElement {
     const p = lvl == null ? 0 : Math.max(0, Math.min(100 + c.headroom, lvl));
     const y = BOTTOM - (BOTTOM - this._top) * p / 100;
     this._el.levels.forEach(g => { g.setAttribute("transform", `translate(0 ${y})`); g.style.transform = `translateY(${y}px)`; });
-    if (this._el.stream) this._el.stream.setAttribute("d", `M552 262 V${Math.max(262, y + 6).toFixed(0)}`);
+    if (this._el.stream) this._el.stream.setAttribute("d", `M552 196 V${Math.max(196, y + 6).toFixed(0)}`);
     const low = lvl != null && lvl <= c.low;
     this._el.pcts.forEach(t => {
       t.innerHTML = lvl == null ? "–" : `${Math.round(lvl)}<tspan font-size="90" dx="6">%</tspan>`;
