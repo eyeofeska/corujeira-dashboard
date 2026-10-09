@@ -6,7 +6,8 @@
    woodland foraging and the shiitake logs; thresholds in LAND), daylight bands, 3/5/7 day pills, and thumb
    scrubbing. At WIDE_MIN px and wider the two charts sit side by side under the summary and advice.
    Options: show_models (legend of models, default true), navigate (title opens e.g. "#weather"),
-   advice (land advice lines, default true). The tablet's browser fetches the data directly (nothing runs in
+   advice (land advice lines under the summary, default true; the advice is published either way as the
+   window event "corujeira-land-advice" with { ts, items: [{ pri, kind, text }] } for the Hoot card). The tablet's browser fetches the data directly (nothing runs in
    Home Assistant) and keeps the last forecast for when the internet is off. Remove this resource to revert. */
 (() => {
 const MODELS = [
@@ -73,6 +74,13 @@ const f1 = v => (Math.round(v * 10) / 10).toFixed(1);
 const store = {
   get(k) { try { return JSON.parse(localStorage.getItem(k)); } catch (e) { return null; } },
   set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} },
+};
+// Land advice goes out to any card on the page (event + window global) and into localStorage for the next load.
+const publishLand = items => {
+  const d = { ts: Date.now(), items };
+  window.__corujeiraLand = d;
+  store.set("corujeira-land:advice", d);
+  window.dispatchEvent(new CustomEvent("corujeira-land-advice", { detail: d }));
 };
 
 class CorujeiraMeteogramCard extends HTMLElement {
@@ -360,11 +368,14 @@ class CorujeiraMeteogramCard extends HTMLElement {
     this.shadowRoot.querySelector(".summary").textContent = this._summary(s.days.slice(0, days), lang);
     this._renderAdvice();
   }
+  // The advice is always worked out and published for other cards (the Hoot card shows it); the inline
+  // lines under the summary only appear with advice: true.
   _renderAdvice() {
     const lang = (this._hass && this._hass.locale && this._hass.locale.language) || "en";
-    const adv = this._c.advice && this._s ? this._advice(this._s.days, lang, this._past) : [];
-    this.shadowRoot.querySelector(".advice").innerHTML = adv.map(t =>
-      `<div class="tipline"><ha-icon icon="mdi:sprout-outline"></ha-icon><span>${esc(t)}</span></div>`).join("");
+    const adv = this._s ? this._advice(this._s.days, lang, this._past) : [];
+    if (this._s) publishLand(adv.map(({ pri, kind, text }) => ({ pri, kind, text })));
+    this.shadowRoot.querySelector(".advice").innerHTML = (this._c.advice ? adv.slice(0, ADVICE_MAX) : []).map(x =>
+      `<div class="tipline"><ha-icon icon="mdi:sprout-outline"></ha-icon><span>${esc(x.text)}</span></div>`).join("");
   }
 
   // Draws one SVG: the temperature panel, the rain/wind panel, or both stacked. Returns the markup and the
@@ -555,7 +566,7 @@ class CorujeiraMeteogramCard extends HTMLElement {
     const name = d => d.date === iso(today) ? "today" : d.date === iso(tom) ? "tomorrow"
       : new Date(d.date + "T12:00:00").toLocaleDateString(lang, { weekday: "long" });
     const span = (a, b) => a === b ? name(days[a]) : `${name(days[a])} to ${name(days[b])}`;
-    const r = Math.round, out = [], add = (pri, at, text) => out.push({ pri, at, text });
+    const r = Math.round, out = [], add = (pri, at, text, kind) => out.push({ pri, at, text, kind });
     const runs = test => {
       const res = [];
       days.forEach((d, i) => {
@@ -573,18 +584,18 @@ class CorujeiraMeteogramCard extends HTMLElement {
     if (fi >= 0) {
       const l = r(days[fi].low);
       add(1, fi, l <= 0 ? `Frost likely early ${name(days[fi])} (${l}°): cover seedlings and bring tender pots in.`
-        : `Near frost early ${name(days[fi])} (${l}°): fleece the seedlings.`);
+        : `Near frost early ${name(days[fi])} (${l}°): fleece the seedlings.`, "frost");
     }
     const heavy = runs(d => wet(d) && d.amt >= LAND.heavyRain);
     if (heavy.length) {
       // reported amount = expected total (amount × share of models), the same figure the summary uses
       const h = heavy[0], mm = r(days.slice(h.a, h.b + 1).reduce((t, d) => t + d.amt * d.p, 0)), month = today.getMonth() + 1;
-      add(1, h.a, `Heavy rain ${span(h.a, h.b)} (about ${mm} mm): ${month >= 9 && month <= 11 ? "clear the gutters, " : ""}tarp timber and tools, cover the compost.`);
+      add(1, h.a, `Heavy rain ${span(h.a, h.b)} (about ${mm} mm): ${month >= 9 && month <= 11 ? "clear the gutters, " : ""}tarp timber and tools, cover the compost.`, "rain");
     }
     const gale = runs(d => d.gust != null && d.gust >= LAND.gale);
-    if (gale.length) add(1, gale[0].a, `Strong gusts ${span(gale[0].a, gale[0].b)} (to ${peak(gale[0], "gust")} km/h): tie down tarps, the yurt cover and anything loose.`);
+    if (gale.length) add(1, gale[0].a, `Strong gusts ${span(gale[0].a, gale[0].b)} (to ${peak(gale[0], "gust")} km/h): tie down tarps, the yurt cover and anything loose.`, "wind");
     const hot = runs(d => d.high != null && d.high >= LAND.hot);
-    if (hot.length) add(1, hot[0].a, `Hot ${span(hot[0].a, hot[0].b)} (up to ${peak(hot[0], "high")}°): water early in the morning and shade young plants.`);
+    if (hot.length) add(1, hot[0].a, `Hot ${span(hot[0].a, hot[0].b)} (up to ${peak(hot[0], "high")}°): water early in the morning and shade young plants.`, "heat");
 
     // pump: the creek runs muddy in and after heavy rain, so pump before rain or once the creek runs clear.
     // With a silo level sensor (option silo: sensor entity in %, silo_low default 40) a low silo gets its own line.
@@ -593,11 +604,11 @@ class CorujeiraMeteogramCard extends HTMLElement {
     const rainSoon = days.findIndex((d, i) => i <= 2 && wet(d) && d.amt * d.p >= LAND.rainDue);
     if (silo != null && silo < this._c.silo_low) {
       const lvl = `Silo at ${r(silo)}%`;
-      if (rainSoon === 0) add(1, 0, `${lvl} and rain today: hold the pump until the creek runs clear, then top up.`);
-      else if (rainSoon > 0) add(1, 0, `${lvl} with rain due ${name(days[rainSoon])}: pump before then, or wait until the creek runs clear after.`);
-      else add(2, 0, `${lvl}: run the pump once you've checked the creek is running clear.`);
+      if (rainSoon === 0) add(1, 0, `${lvl} and rain today: hold the pump until the creek runs clear, then top up.`, "water");
+      else if (rainSoon > 0) add(1, 0, `${lvl} with rain due ${name(days[rainSoon])}: pump before then, or wait until the creek runs clear after.`, "water");
+      else add(2, 0, `${lvl}: run the pump once you've checked the creek is running clear.`, "water");
     } else if (heavy.length) {
-      add(2, heavy[0].a, `Pump: keep it off in the heavy rain ${span(heavy[0].a, heavy[0].b)}, then check the creek runs clear before pumping again.`);
+      add(2, heavy[0].a, `Pump: keep it off in the heavy rain ${span(heavy[0].a, heavy[0].b)}, then check the creek runs clear before pumping again.`, "water");
     }
 
     // power: two or more dull days in a row, or else a bright stretch worth using
@@ -608,10 +619,10 @@ class CorujeiraMeteogramCard extends HTMLElement {
         const u = dull[0], next = days.findIndex((d, i) => i > u.b && d.sun != null && d.sun >= best * 0.7);
         const tip = u.a > 0 ? `run the pump and power tools ${u.a === 1 ? "today" : "by " + name(days[u.a - 1])}`
           : next >= 0 ? `save pumping and power tools for ${name(days[next])}` : "keep big loads to a minimum";
-        add(2, u.a, `Little sun ${span(u.a, u.b)}: go easy on the battery, ${tip}.`);
+        add(2, u.a, `Little sun ${span(u.a, u.b)}: go easy on the battery, ${tip}.`, "power");
       } else if (best >= LAND.brightMin) {
         const br = runs(d => d.sun != null && d.sun >= best * LAND.brightFrac).filter(x => x.b > x.a);
-        if (br.length) add(3, br[0].a, `Bright ${span(br[0].a, br[0].b)}: good days for pumping, power tools and charging.`);
+        if (br.length) add(3, br[0].a, `Bright ${span(br[0].a, br[0].b)}: good days for pumping, power tools and charging.`, "power");
       }
     }
 
@@ -620,18 +631,18 @@ class CorujeiraMeteogramCard extends HTMLElement {
     if (dry.length && dry[0].a <= 2) {
       const d0 = dry[0], scorching = days.slice(d0.a, d0.b + 1).some(d => d.high >= 28);
       add(2, d0.a, hot.length ? `Dry ${span(d0.a, d0.b)}: mulch bare soil and keep the silo topped up.`
-        : `Dry and warm ${span(d0.a, d0.b)}: water seedlings in the ${scorching ? "early morning" : "evening"} and mulch bare soil.`);
+        : `Dry and warm ${span(d0.a, d0.b)}: water seedlings in the ${scorching ? "early morning" : "evening"} and mulch bare soil.`, "plant");
     }
     if (!heavy.length) {
       const ri = days.findIndex((d, i) => i <= 2 && wet(d) && d.amt * d.p >= LAND.rainDue);
-      if (ri >= 0) add(3, ri, `Rain due ${name(days[ri])} (about ${r(days[ri].amt * days[ri].p)} mm): hold off watering.`);
+      if (ri >= 0) add(3, ri, `Rain due ${name(days[ri])} (about ${r(days[ri].amt * days[ri].p)} mm): hold off watering.`, "rain");
     }
 
     // soil: a mild, dry day straight after rain is a planting window
     for (let i = 1; i < days.length; i++) {
       const prev = days[i - 1], d = days[i];
       if (wet(prev) && d.p < 0.3 && d.high != null && d.high >= 12 && d.high <= 24 && d.low != null && d.low >= 5) {
-        add(3, i, `Moist soil after ${name(prev)}'s rain: ${name(d)} is a good day to plant out or sow.`);
+        add(3, i, `Moist soil after ${name(prev)}'s rain: ${name(d)} is a good day to plant out or sow.`, "plant");
         break;
       }
     }
@@ -667,22 +678,22 @@ class CorujeiraMeteogramCard extends HTMLElement {
       for (const e of [...soaked].reverse()) {
         const w = windowIn(e, LAND.forageFrom, LAND.forageTo);
         if (!w) continue;
-        add(2, w.a, `Foraging ${span(w.a, w.b)}, a week or two after ${rainLabel(e)}: porcini and chanterelles under oak and chestnut, parasols in clearings, saffron milk caps under pine. Pick only what you know for certain.`);
+        add(2, w.a, `Foraging ${span(w.a, w.b)}, a week or two after ${rainLabel(e)}: porcini and chanterelles under oak and chestnut, parasols in clearings, saffron milk caps under pine. Pick only what you know for certain.`, "mushroom");
         done = true;
         break;
       }
       const ahead = soaked.find(e => e.start >= 0 && e.end + LAND.forageFrom > days.length - 1);
-      if (!done && ahead) add(3, ahead.start, `${rainLabel(ahead).replace(/^./, c => c.toUpperCase())} (about ${r(ahead.mm)} mm) should bring woodland mushrooms up from around ${when(ahead.end + LAND.forageFrom)}.`);
+      if (!done && ahead) add(3, ahead.start, `${rainLabel(ahead).replace(/^./, c => c.toUpperCase())} (about ${r(ahead.mm)} mm) should bring woodland mushrooms up from around ${when(ahead.end + LAND.forageFrom)}.`, "mushroom");
     }
     // shiitake logs (open air, rain-fed): expect fruiting a few days after a decent rain
     for (const e of [...soaks].reverse()) {
       if (e.mm < LAND.logRain) continue;
       const w = windowIn(e, LAND.farmFrom, LAND.farmTo);
       if (!w) continue;
-      add(2, w.a, `Shiitake logs: likely fruiting ${span(w.a, w.b)}, a few days after ${rainLabel(e)}. Pick while the caps are still curled under.`);
+      add(2, w.a, `Shiitake logs: likely fruiting ${span(w.a, w.b)}, a few days after ${rainLabel(e)}. Pick while the caps are still curled under.`, "mushroom");
       break;
     }
-    return out.sort((x, y) => x.pri - y.pri || x.at - y.at).slice(0, ADVICE_MAX).map(x => x.text);
+    return out.sort((x, y) => x.pri - y.pri || x.at - y.at);
   }
 
   // One or two plain sentences, built from the daily figures: rain first, then temperatures.
