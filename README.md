@@ -24,7 +24,7 @@ Options are documented in the comment block at the top of each file in `cards/`.
 
 1. Edit the card in `cards/`.
 2. Run `node scripts/build.mjs` to rebuild `dist/corujeira-dashboard.js`, and commit both.
-3. Bump `version` in `package.json` and publish a GitHub release with a matching tag (e.g. `v1.0.1`). HACS offers it as an update.
+3. Bump `version` in `package.json` and push to `main`. With no releases published, HACS tracks the latest commit on `main` and offers each push as an update (HACS checks about every 48 hours; "Update information" in HACS checks now).
 
 ## Examples
 
