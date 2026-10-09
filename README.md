@@ -9,7 +9,7 @@ Custom Lovelace cards for the Home Assistant dashboard at A Corujeira, an off-gr
 | [`corujeira-forecast-card.js`](cards/corujeira-forecast-card.js) | `custom:corujeira-forecast-card` | Next 12 hours (2-hourly) above a 5-day forecast, from any `weather` entity. |
 | [`corujeira-meteogram-card.js`](cards/corujeira-meteogram-card.js) | `custom:corujeira-meteogram-card` | Multi-model Open-Meteo meteogram with rain agreement, wind, a written summary and land advice. |
 | [`corujeira-hoot-card.js`](cards/corujeira-hoot-card.js) | `custom:corujeira-hoot-card` | Hoot the land wizard: an owl with a speech bubble of land advice (from the meteogram and Vigia fire watch), each line with a recolourable icon. |
-| [`corujeira-silo-card.js`](cards/corujeira-silo-card.js) | `custom:corujeira-silo-card` | A water tank drawing that fills to the current level, with the % inside and litres beside it. |
+| [`corujeira-silo-card.js`](cards/corujeira-silo-card.js) | `custom:corujeira-silo-card` | A water tank drawing that fills to the current level, with the % inside and litres beside it, plus an optional pump switch with run-time pills and countdown. |
 | [`corujeira-fire-card.js`](cards/corujeira-fire-card.js) | `custom:corujeira-fire-card` | IPMA fire risk and weather warning, plus nearby NASA FIRMS hotspots and wind direction. |
 
 ## Install
@@ -49,9 +49,12 @@ colors: { mushroom: "#A0673A", fire: "#C2574A" }
 
 ```yaml
 type: custom:corujeira-silo-card
-entity: sensor.water_silo_level      # %
+entity: sensor.water_silo_level      # %, 100 = full storage
 volume: sensor.water_silo_volume     # L, optional
-capacity: 6200
+capacity: 5000
+pump: switch.pump_switch             # optional pump row
+pump_timer: timer.pump_timer
+pump_run_time: input_select.pump_run_time
 ```
 
 ```yaml
