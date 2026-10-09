@@ -9,11 +9,12 @@ Custom Lovelace cards for the Home Assistant dashboard at A Corujeira, an off-gr
 | [`corujeira-forecast-card.js`](cards/corujeira-forecast-card.js) | `custom:corujeira-forecast-card` | Next 12 hours (2-hourly) above a 5-day forecast, from any `weather` entity. |
 | [`corujeira-meteogram-card.js`](cards/corujeira-meteogram-card.js) | `custom:corujeira-meteogram-card` | Multi-model Open-Meteo meteogram with rain agreement, wind, a written summary and land advice. |
 | [`corujeira-hoot-card.js`](cards/corujeira-hoot-card.js) | `custom:corujeira-hoot-card` | Hoot the land wizard: an owl with a speech bubble of land advice (from the meteogram and Vigia fire watch), each line with a recolourable icon. |
+| [`corujeira-silo-card.js`](cards/corujeira-silo-card.js) | `custom:corujeira-silo-card` | A water tank drawing that fills to the current level, with the % inside and litres beside it. |
 | [`corujeira-fire-card.js`](cards/corujeira-fire-card.js) | `custom:corujeira-fire-card` | IPMA fire risk and weather warning, plus nearby NASA FIRMS hotspots and wind direction. |
 
 ## Install
 
-All six cards ship as one file, `dist/corujeira-dashboard.js`.
+All seven cards ship as one file, `dist/corujeira-dashboard.js`.
 
 **With HACS:** HACS > three-dot menu > Custom repositories > add `eyeofeska/corujeira-dashboard`, type Dashboard. Download it, then refresh the browser. HACS registers the resource for you, and new releases show up as updates.
 
@@ -44,6 +45,13 @@ silo: sensor.silo_level   # optional, enables the low-silo pump advice
 ```yaml
 type: custom:corujeira-hoot-card   # needs a corujeira-meteogram-card on the dashboard
 colors: { mushroom: "#A0673A", fire: "#C2574A" }
+```
+
+```yaml
+type: custom:corujeira-silo-card
+entity: sensor.water_silo_level      # %
+volume: sensor.water_silo_volume     # L, optional
+capacity: 6200
 ```
 
 ```yaml
