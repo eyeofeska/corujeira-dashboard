@@ -78,9 +78,7 @@ const CAT = `<svg class="cat" viewBox="0 0 64 74" aria-hidden="true">
       <path d="M21.4 21.5l2 2.6M22 18.8l1.4 3" stroke="#6E6862" stroke-width=".6" stroke-linecap="round"/></g>
     <g class="ear r"><path class="fur" d="M46.4 31 44.6 11.8 33.8 22.6z" fill="${FUR}" stroke-linejoin="round"/><path d="M43.6 27.4 42.8 16.6 36.4 23z" fill="#5C4046"/>
       <path d="M42.6 21.5l-2 2.6M42 18.8l-1.4 3" stroke="#6E6862" stroke-width=".6" stroke-linecap="round"/></g>
-    <path d="M21 46.6c6.6 3.6 15.4 3.6 22 0" fill="none" stroke="#2E5E44" stroke-width="2.4" stroke-linecap="round"/>
     <path class="fur" d="${fluff(32, 34.5, 15.6, 13, 21, .1, 5)}" fill="${FUR}"/>
-    <path d="M32 48.2l1 2 2.2.3-1.6 1.5.4 2.2-2-1.1-2 1.1.4-2.2-1.6-1.5 2.2-.3z" fill="#D4A72C"/>
     <g class="eyes"><ellipse cx="25.6" cy="34" rx="3.6" ry="3.1" fill="#D9B93C"/><ellipse cx="38.4" cy="34" rx="3.6" ry="3.1" fill="#D9B93C"/>
       <ellipse class="pupil" cx="25.8" cy="34" rx="1.1" ry="2.7" fill="#111"/><ellipse class="pupil" cx="38.2" cy="34" rx="1.1" ry="2.7" fill="#111"/>
       <circle cx="26.9" cy="32.7" r=".8" fill="#fff"/><circle cx="39.5" cy="32.7" r=".8" fill="#fff"/></g>
