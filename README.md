@@ -12,11 +12,19 @@ Custom Lovelace cards for the Home Assistant dashboard at A Corujeira, an off-gr
 
 ## Install
 
-1. Copy the file into `config/www/` on your Home Assistant.
-2. Settings > Dashboards > Resources > Add resource: URL `/local/corujeira-meteogram-card.js`, type JavaScript module.
-3. Add the card to a dashboard with `type: custom:corujeira-meteogram-card` (or the matching type above).
+All five cards ship as one file, `dist/corujeira-dashboard.js`.
 
-Options are documented in the comment block at the top of each file.
+**With HACS:** HACS > three-dot menu > Custom repositories > add `eyeofeska/corujeira-dashboard`, type Dashboard. Download it, then refresh the browser. HACS registers the resource for you, and new releases show up as updates.
+
+**By hand:** copy `dist/corujeira-dashboard.js` into `config/www/`, then add it under Settings > Dashboards > Resources as `/local/corujeira-dashboard.js`, type JavaScript module.
+
+Options are documented in the comment block at the top of each file in `cards/`.
+
+## Making a change
+
+1. Edit the card in `cards/`.
+2. Run `node scripts/build.mjs` to rebuild `dist/corujeira-dashboard.js`, and commit both.
+3. Bump `version` in `package.json` and publish a GitHub release with a matching tag (e.g. `v1.0.1`). HACS offers it as an update.
 
 ## Examples
 
